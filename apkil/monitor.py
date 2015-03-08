@@ -16,6 +16,12 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with APKIL.  If not, see <http://www.gnu.org/licenses/>.
 
+# v0        1st local reg
+# v1        2nd local reg
+# v2, p0    1st parameter reg
+# v3, p1    2nd parameter reg
+# v4, p2    3rd parameter reg
+
 import sys
 import os
 import copy
@@ -93,6 +99,44 @@ invoke-virtual {p0}, Ljava/lang/Object;->toString()Ljava/lang/String;
 move-result-object v3
 goto :goto_4
 .end method
+.method public static checkFileExists(Ljava/lang/String;)V
+.registers 4
+new-instance v0, Ljava/io/File;
+invoke-direct {v0, p0}, Ljava/io/File;-><init>(Ljava/lang/String;)V
+invoke-virtual {v0}, Ljava/io/File;->exists()Z
+move-result v1
+if-eqz v1, :cond_28
+new-instance v1, Ljava/lang/StringBuilder;
+invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+const-string v2, "{ \"msg\" :\""
+invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+move-result-object v1
+invoke-virtual {v1, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+move-result-object v1
+const-string v2, " exists!\"}"
+invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+move-result-object v1
+invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+move-result-object v1
+invoke-static {v1}, Lorg/malapp/MalappActivity;->log(Ljava/lang/String;)V
+:goto_27
+return-void
+:cond_28
+new-instance v1, Ljava/lang/StringBuilder;
+invoke-direct {v1}, Ljava/lang/StringBuilder;-><init>()V
+const-string v2, "{ \"msg\" :\""
+invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+move-result-object v1
+invoke-virtual {v1, p0}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+move-result-object v1
+const-string v2, " doesn\'t exist!\"}"
+invoke-virtual {v1, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+move-result-object v1
+invoke-virtual {v1}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+move-result-object v1
+invoke-static {v1}, Ldroidbox/apimonitor/Helper;->log(Ljava/lang/String;)V
+goto :goto_27
+.end method
 '''
 
 METHOD_TYPE_BY_OPCODE = {
@@ -109,16 +153,16 @@ METHOD_TYPE_BY_OPCODE = {
         }
 
 OPCODE_MAP = {
-        "invoke-virtual": "invoke-static",
-        "invoke-super": "invoke-static",
-        "invoke-direct": "invoke-static",
-        "invoke-static": "invoke-static",
-        "invoke-interface": "invoke-static",
-        "invoke-virtual/range": "invoke-static/range",
-        "invoke-super/range": "invoke-static/range",
-        "invoke-direct/range": "invoke-static/range",
-        "invoke-static/range": "invoke-static/range",
-        "invoke-interface/range": "invoke-static/range"
+        "invoke-virtual": "invoke-static",                  # 35c
+        "invoke-super": "invoke-static",                    # 35c
+        "invoke-direct": "invoke-static",                   # 35c
+        "invoke-static": "invoke-static",                   # 35c
+        "invoke-interface": "invoke-static",                # 35c
+        "invoke-virtual/range": "invoke-static/range",      # 3rc
+        "invoke-super/range": "invoke-static/range",        # 3rc
+        "invoke-direct/range": "invoke-static/range",       # 3rc
+        "invoke-static/range": "invoke-static/range",       # 3rc
+        "invoke-interface/range": "invoke-static/range"     # 3rc
         }
 
 class APIMonitor(object):
@@ -187,9 +231,9 @@ class APIMonitor(object):
         # check and fix apis in API_LIST
         method_descs = []
         for m in self.entries:
-            c = ""
-            api_name = ""
-            method_name = ""
+            c = ""                  # class name, ex: java/io/FileWriter
+            api_name = ""           # api name, specific usage of a method ex: parse(Ljava/lang/String)
+            method_name = ""        # method name, ex: parse
 
             ia = m.find("->")
             ilb = m.find('(')
@@ -207,11 +251,11 @@ class APIMonitor(object):
             if not self.android_api.classes.has_key(c):
                 print "[Warn] Class not found in API-%d db: %s" % (level, m)
                 continue
-            # just class name
+            # just class name, include all methods in the class
             if not method_name:
                 ms = self.android_api.classes[c].methods.keys()
                 method_descs.extend(ms)
-            # full signature
+            # full signature, method name with input parameter
             elif api_name:
                 if not self.android_api.classes[c].methods.has_key(m):
                     if method_name == "<init>":
@@ -236,7 +280,7 @@ class APIMonitor(object):
                         print "[Warn] Method not found in API-%d db: %s" % (level, m)
                 else:
                     method_descs.append(m)
-            # signature without parameters
+            # signature without parameters, method without input parameter
             else:
                 own = False
                 if self.android_api.classes[c].methods_by_name.has_key(method_name):
@@ -272,6 +316,7 @@ class APIMonitor(object):
         print "\n".join(self.method_descs)
         print "**************************"
         """
+        # mapping from api to class, ex: 'append(C)': 'Ljava/io/Writer'
         for m in self.method_descs:
             self.api_dict[m] = ""
             ia = m.find("->")
@@ -281,21 +326,20 @@ class APIMonitor(object):
         print "Done!"
 
         print "Injecting..."
-        print st.classes;
-        for c in st.classes:
+        for c in st.classes: # for each class in the file
             class_ = AndroidClass()
             class_.isAPI = False
 
             class_.desc = c.name
             class_.name= c.name[1:-1].replace('/', '.')
-            class_.access = c.access
+            class_.access = c.access # public final interface ...
             if "interface" in c.access:
                 class_.supers.extend(c.implements)
             else:
                 class_.implements = c.implements
                 class_.supers.append(c.super_name)
 
-            for m in c.methods:
+            for m in c.methods: # 1st level methods
                 method = AndroidMethod()
                 method.isAPI = False
                 method.desc = "%s->%s" % (c.name, m.descriptor)
@@ -312,7 +356,7 @@ class APIMonitor(object):
             for m in c.methods:
                 i = 0
                 while i < len(m.insns):
-                    insn = m.insns[i]
+                    insn = m.insns[i]       # insn : instruction
                     if insn.fmt == "35c":
                         md = insn.obj.method_desc
                         on = insn.opcode_name
@@ -416,10 +460,12 @@ class APIMonitor(object):
         #m = segs[1]
         method_type = METHOD_TYPE_BY_OPCODE[on]
         segs = m.rsplit("->", 1)
+        print on, m, method_type
 
         if self.stub_classes.has_key(segs[0]):
             stub_class = self.stub_classes[segs[0]]
         else:
+            # create a wrapper class and make java.lang.Object as its super class, ex: Ldroid/java/io/FileReader
             stub_class = ClassNode()
             stub_class.set_name("L" + PKG_PREFIX + "/" + segs[0][1:])
             stub_class.add_access("public")
@@ -427,6 +473,8 @@ class APIMonitor(object):
 
             self.stub_classes[segs[0]] = stub_class
             self.class_map[segs[0]] = "L" + PKG_PREFIX + "/" + segs[0][1:]
+
+            # create a constructor method
 
             #.method public constructor <init>()V
             #    .registers 1
@@ -463,6 +511,8 @@ class APIMonitor(object):
         reg_num = method.get_paras_reg_num()
         ri = 1
 
+        # create api call
+
         if reg_num <= 5:
             if on.find('/') >= 0:
                 on = on[:on.find('/')]
@@ -473,6 +523,8 @@ class APIMonitor(object):
             i = "%s {p0 .. p%d}, %s" % (on, reg_num - 1, m) 
 
         method.add_insn(InsnNode(i)) 
+
+        # create return code
 
         if not method.ret.void:
             if method.ret.basic and method.ret.dim == 0:
@@ -486,24 +538,33 @@ class APIMonitor(object):
                 method.add_insn(InsnNode("move-result-object v1"))
                 ri += 1
 
+        # new a string object
         method.add_insn(InsnNode("new-instance \
 v%d, Ljava/lang/StringBuilder;" % ri))
+        # call string constructor
         method.add_insn(InsnNode("invoke-direct \
 {v%d}, Ljava/lang/StringBuilder;-><init>()V" % ri))
 
-        method.add_insn(InsnNode("const-string v%d,\"%s(\"" % \
-                                 (ri + 1, m.split('(', 1)[0])))
+        # create a contant string
+        if para_num == 1:
+            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
+                                 (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
+        else:
+            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
+                                 (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
+        # append constant string to the string object
         append_i = InsnNode("invoke-virtual \
 {v%d, v%d}, Ljava/lang/StringBuilder;->\
 append(Ljava/lang/String;)Ljava/lang/StringBuilder;" % \
                             (ri, ri + 1))
         method.add_insn(append_i)
+
         
         # print parameters
         pi = 1
         for k in range(1, para_num):
             p = method.paras[k]
-            method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"{\\\"type\\\":\\\"%s\\\",\\\"var\\\":\\\"\"" % (ri + 1,
                                      p.get_desc())))
             method.add_insn(append_i)
 
@@ -528,21 +589,23 @@ Ldroidbox/apimonitor/Helper;->toString(Ljava/lang/Object;)Ljava/lang/String;" % 
                 method.add_insn(append_i)
 
             if k < para_num - 1:
-                method.add_insn(InsnNode("const-string v%d, \" | \"" % \
+                method.add_insn(InsnNode("const-string v%d, \"\\\"}, \"" % \
                                          (ri + 1)))
                 method.add_insn(append_i)
-
-        method.add_insn(InsnNode("const-string v%d, \")\"" % (ri + 1)))
+        if para_num == 1:
+            method.add_insn(InsnNode("const-string v%d, \"}, \"" % (ri + 1)))
+        else:
+            method.add_insn(InsnNode("const-string v%d, \"\\\"}]}, \"" % (ri + 1)))
         method.add_insn(append_i)
 
         # print return value
         p = method.ret
         if p.void:
-            method.add_insn(InsnNode("const-string v%d, \"%s\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"\\\"output\\\":{\\\"type\\\":\\\"%s\"" % (ri + 1,
                                      p.get_desc())))
             method.add_insn(append_i)
         else:
-            method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"\\\"output\\\":{\\\"type\\\":\\\"%s\\\", \\\"var\\\":\\\"\"" % (ri + 1,
                                      p.get_desc())))
             method.add_insn(append_i)
             if p.basic and p.dim == 0:
@@ -562,6 +625,8 @@ Ldroidbox/apimonitor/Helper;->toString(Ljava/lang/Object;)Ljava/lang/String;"))
                 method.add_insn(InsnNode("move-result-object v%d" % (ri + 1)))
                 method.add_insn(append_i)
 
+        method.add_insn(InsnNode("const-string v%d, \"\\\"}}\"" % (ri + 1)))
+        method.add_insn(append_i)
         method.add_insn(InsnNode("invoke-virtual {v%d}, \
 Ljava/lang/StringBuilder;->toString()Ljava/lang/String;" % ri))
         method.add_insn(InsnNode("move-result-object v%d" % (ri + 1)))
@@ -627,9 +692,15 @@ Ljava/lang/Exception;->printStackTrace()V"))
 v%d, Ljava/lang/StringBuilder;" % ri))
         method.add_insn(InsnNode("invoke-direct \
 {v%d}, Ljava/lang/StringBuilder;-><init>()V" % ri))
+        if para_num == 0:
+            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
+                                 (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
+        else:
+            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
+                                 (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
 
-        method.add_insn(InsnNode("const-string v%d,\"%s(\"" % \
-                                 (ri + 1, m.split('(', 1)[0])))
+        #method.add_insn(InsnNode("const-string v%d,\"%s(\"" % \
+        #                         (ri + 1, m.split('(', 1)[0])))
         append_i = InsnNode("invoke-virtual \
 {v%d, v%d}, Ljava/lang/StringBuilder;->\
 append(Ljava/lang/String;)Ljava/lang/StringBuilder;" % \
@@ -640,8 +711,9 @@ append(Ljava/lang/String;)Ljava/lang/StringBuilder;" % \
         pi = 0
         for k in range(0, para_num):
             p = method.paras[k]
-            method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"{\\\"type\\\":\\\"%s\\\",\\\"var\\\":\\\"\"" % (ri + 1,
                                      p.get_desc())))
+            #method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
             method.add_insn(append_i)
 
             if p.basic and p.dim == 0:
@@ -663,23 +735,33 @@ Ldroidbox/apimonitor/Helper;->toString(Ljava/lang/Object;)Ljava/lang/String;" % 
                 pi += 1
                 method.add_insn(InsnNode("move-result-object v%d" % (ri + 1)))
                 method.add_insn(append_i)
+                #if m.split(';', 1)[0] == "Ljava/io/FileWriter":
+                    #method.add_insn(InsnNode("invoke-static {v%d}, \
+#Ldroidbox/apimonitor/Helper;->checkFileExists(Ljava/lang/String;)V" % (ri + 1)))
 
             if k < para_num - 1:
-                method.add_insn(InsnNode("const-string v%d, \" | \"" % \
+                method.add_insn(InsnNode("const-string v%d, \"\\\"}, \"" % \
                                          (ri + 1)))
+                #method.add_insn(InsnNode("const-string v%d, \" | \"" % \
                 method.add_insn(append_i)
 
-        method.add_insn(InsnNode("const-string v%d, \")\"" % (ri + 1)))
+        if para_num == 0:
+            method.add_insn(InsnNode("const-string v%d, \"}, \"" % (ri + 1)))
+        else:
+            method.add_insn(InsnNode("const-string v%d, \"\\\"}]}, \"" % (ri + 1)))
+        #method.add_insn(InsnNode("const-string v%d, \")\"" % (ri + 1)))
         method.add_insn(append_i)
 
         # print return value
         p = method.ret
         if p.void:
-            method.add_insn(InsnNode("const-string v%d, \"%s\"" % (ri + 1,
+            #method.add_insn(InsnNode("const-string v%d, \"%s\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"\\\"output\\\":{\\\"type\\\":\\\"%s\"" % (ri + 1,
                                      p.get_desc())))
             method.add_insn(append_i)
         else:
-            method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            #method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"\\\"output\\\":{\\\"type\\\":\\\"%s\\\", \\\"var\\\":\\\"\"" % (ri + 1,
                                      p.get_desc())))
             method.add_insn(append_i)
             if p.basic and p.dim == 0:
@@ -699,6 +781,8 @@ Ldroidbox/apimonitor/Helper;->toString(Ljava/lang/Object;)Ljava/lang/String;"))
                 method.add_insn(InsnNode("move-result-object v%d" % (ri + 1)))
                 method.add_insn(append_i)
 
+        method.add_insn(InsnNode("const-string v%d, \"\\\"}}\"" % (ri + 1)))
+        method.add_insn(append_i)
         method.add_insn(InsnNode("invoke-virtual {v%d}, \
 Ljava/lang/StringBuilder;->toString()Ljava/lang/String;" % ri))
         method.add_insn(InsnNode("move-result-object v%d" % (ri + 1)))
@@ -758,9 +842,15 @@ Ldroidbox/apimonitor/Helper;->log(Ljava/lang/String;)V" % \
 v%d, Ljava/lang/StringBuilder;" % ri))
         method.add_insn(InsnNode("invoke-direct \
 {v%d}, Ljava/lang/StringBuilder;-><init>()V" % ri))
+        if para_num == 0:
+            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
+                                 (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
+        else:
+            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
+                                 (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
 
-        method.add_insn(InsnNode("const-string v%d,\"%s(\"" % \
-                                 (ri + 1, m.split('(', 1)[0])))
+        #method.add_insn(InsnNode("const-string v%d,\"%s(\"" % \
+        #                         (ri + 1, m.split('(', 1)[0])))
         append_i = InsnNode("invoke-virtual \
 {v%d, v%d}, Ljava/lang/StringBuilder;->\
 append(Ljava/lang/String;)Ljava/lang/StringBuilder;" % \
@@ -771,7 +861,8 @@ append(Ljava/lang/String;)Ljava/lang/StringBuilder;" % \
         pi = 0
         for k in range(0, para_num):
             p = method.paras[k]
-            method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            #method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"{\\\"type\\\":\\\"%s\\\",\\\"var\\\":\\\"\"" % (ri + 1,
                                      p.get_desc())))
             method.add_insn(append_i)
 
@@ -796,21 +887,28 @@ Ldroidbox/apimonitor/Helper;->toString(Ljava/lang/Object;)Ljava/lang/String;" % 
                 method.add_insn(append_i)
 
             if k < para_num - 1:
-                method.add_insn(InsnNode("const-string v%d, \" | \"" % \
+                #method.add_insn(InsnNode("const-string v%d, \" | \"" % \
+                method.add_insn(InsnNode("const-string v%d, \"\\\"}, \"" % \
                                          (ri + 1)))
                 method.add_insn(append_i)
 
-        method.add_insn(InsnNode("const-string v%d, \")\"" % (ri + 1)))
+        if para_num == 0:
+            method.add_insn(InsnNode("const-string v%d, \"}, \"" % (ri + 1)))
+        else:
+            method.add_insn(InsnNode("const-string v%d, \"\\\"}]}, \"" % (ri + 1)))
+        #method.add_insn(InsnNode("const-string v%d, \")\"" % (ri + 1)))
         method.add_insn(append_i)
 
         # print return value
         p = method.ret
         if p.void:
-            method.add_insn(InsnNode("const-string v%d, \"%s\"" % (ri + 1,
+            #method.add_insn(InsnNode("const-string v%d, \"%s\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"\\\"output\\\":{\\\"type\\\":\\\"%s\"" % (ri + 1,
                                      p.get_desc())))
             method.add_insn(append_i)
         else:
-            method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            #method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"\\\"output\\\":{\\\"type\\\":\\\"%s\\\", \\\"var\\\":\\\"\"" % (ri + 1,
                                      p.get_desc())))
             method.add_insn(append_i)
             if p.basic and p.dim == 0:
@@ -830,6 +928,8 @@ Ldroidbox/apimonitor/Helper;->toString(Ljava/lang/Object;)Ljava/lang/String;"))
                 method.add_insn(InsnNode("move-result-object v%d" % (ri + 1)))
                 method.add_insn(append_i)
 
+        method.add_insn(InsnNode("const-string v%d, \"\\\"}}\"" % (ri + 1)))
+        method.add_insn(append_i)
         method.add_insn(InsnNode("invoke-virtual {v%d}, \
 Ljava/lang/StringBuilder;->toString()Ljava/lang/String;" % ri))
         method.add_insn(InsnNode("move-result-object v%d" % (ri + 1)))
@@ -914,8 +1014,14 @@ v%d, Ljava/lang/StringBuilder;" % ri))
         method.add_insn(InsnNode("invoke-direct \
 {v%d}, Ljava/lang/StringBuilder;-><init>()V" % ri))
 
-        method.add_insn(InsnNode("const-string v%d,\"%s(\"" % \
-                                 (ri + 1, m.split('(', 1)[0])))
+        if para_num == 0:
+            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
+                                 (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
+        else:
+            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
+                                 (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
+        #method.add_insn(InsnNode("const-string v%d,\"%s(\"" % \
+        #                         (ri + 1, m.split('(', 1)[0])))
         append_i = InsnNode("invoke-virtual \
 {v%d, v%d}, Ljava/lang/StringBuilder;->\
 append(Ljava/lang/String;)Ljava/lang/StringBuilder;" % \
@@ -926,7 +1032,8 @@ append(Ljava/lang/String;)Ljava/lang/StringBuilder;" % \
         pi = 0
         for k in range(0, para_num):
             p = method.paras[k]
-            method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            #method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"{\\\"type\\\":\\\"%s\\\",\\\"var\\\":\\\"\"" % (ri + 1,
                                      p.get_desc())))
             method.add_insn(append_i)
 
@@ -951,21 +1058,28 @@ Ldroidbox/apimonitor/Helper;->toString(Ljava/lang/Object;)Ljava/lang/String;" % 
                 method.add_insn(append_i)
 
             if k < para_num - 1:
-                method.add_insn(InsnNode("const-string v%d, \" | \"" % \
+                #method.add_insn(InsnNode("const-string v%d, \" | \"" % \
+                method.add_insn(InsnNode("const-string v%d, \"\\\"}, \"" % \
                                          (ri + 1)))
                 method.add_insn(append_i)
 
-        method.add_insn(InsnNode("const-string v%d, \")\"" % (ri + 1)))
+        if para_num == 0:
+            method.add_insn(InsnNode("const-string v%d, \"}, \"" % (ri + 1)))
+        else:
+            method.add_insn(InsnNode("const-string v%d, \"\\\"}]}, \"" % (ri + 1)))
+        #method.add_insn(InsnNode("const-string v%d, \")\"" % (ri + 1)))
         method.add_insn(append_i)
 
         # print return value
         p = method.ret
         if p.void:
-            method.add_insn(InsnNode("const-string v%d, \"%s\"" % (ri + 1,
+            #method.add_insn(InsnNode("const-string v%d, \"%s\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"\\\"output\\\":{\\\"type\\\":\\\"%s\"" % (ri + 1,
                                      p.get_desc())))
             method.add_insn(append_i)
         else:
-            method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            #method.add_insn(InsnNode("const-string v%d, \"%s=\"" % (ri + 1,
+            method.add_insn(InsnNode("const-string v%d, \"\\\"output\\\":{\\\"type\\\":\\\"%s\\\", \\\"var\\\":\\\"\"" % (ri + 1,
                                      p.get_desc())))
             method.add_insn(append_i)
             if p.basic and p.dim == 0:
@@ -985,6 +1099,8 @@ Ldroidbox/apimonitor/Helper;->toString(Ljava/lang/Object;)Ljava/lang/String;"))
                 method.add_insn(InsnNode("move-result-object v%d" % (ri + 1)))
                 method.add_insn(append_i)
 
+        method.add_insn(InsnNode("const-string v%d, \"\\\"}}\"" % (ri + 1)))
+        method.add_insn(append_i)
         method.add_insn(InsnNode("invoke-virtual {v%d}, \
 Ljava/lang/StringBuilder;->toString()Ljava/lang/String;" % ri))
         method.add_insn(InsnNode("move-result-object v%d" % (ri + 1)))

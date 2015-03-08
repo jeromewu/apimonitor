@@ -17,6 +17,9 @@ Landroid/content/ContextWrapper;->openFileInput
 Landroid/content/ContextWrapper;->openFileOutput
 Ljava/io/FileReader;-><init>
 Ljava/io/FileWriter;-><init>
+Ljava/io/File;
+Ljava/io/BufferedWriter;
+Ljava/io/BufferedReader;
 
 # Network IO
 Ljava/net/URL;-><init>

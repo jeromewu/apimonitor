@@ -547,10 +547,10 @@ v%d, Ljava/lang/StringBuilder;" % ri))
 
         # create a contant string
         if para_num == 1:
-            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
+            method.add_insn(InsnNode("const-string v%d,\"APIMONITOR:{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
                                  (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
         else:
-            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
+            method.add_insn(InsnNode("const-string v%d,\"APIMONITOR:{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
                                  (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
         # append constant string to the string object
         append_i = InsnNode("invoke-virtual \
@@ -693,10 +693,10 @@ v%d, Ljava/lang/StringBuilder;" % ri))
         method.add_insn(InsnNode("invoke-direct \
 {v%d}, Ljava/lang/StringBuilder;-><init>()V" % ri))
         if para_num == 0:
-            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
+            method.add_insn(InsnNode("const-string v%d,\"APIMONITOR:{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
                                  (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
         else:
-            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
+            method.add_insn(InsnNode("const-string v%d,\"APIMONITOR:{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
                                  (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
 
         #method.add_insn(InsnNode("const-string v%d,\"%s(\"" % \
@@ -843,10 +843,10 @@ v%d, Ljava/lang/StringBuilder;" % ri))
         method.add_insn(InsnNode("invoke-direct \
 {v%d}, Ljava/lang/StringBuilder;-><init>()V" % ri))
         if para_num == 0:
-            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
+            method.add_insn(InsnNode("const-string v%d,\"APIMONITOR:{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
                                  (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
         else:
-            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
+            method.add_insn(InsnNode("const-string v%d,\"APIMONITOR:{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
                                  (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
 
         #method.add_insn(InsnNode("const-string v%d,\"%s(\"" % \
@@ -1015,10 +1015,10 @@ v%d, Ljava/lang/StringBuilder;" % ri))
 {v%d}, Ljava/lang/StringBuilder;-><init>()V" % ri))
 
         if para_num == 0:
-            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
+            method.add_insn(InsnNode("const-string v%d,\"APIMONITOR:{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\"\"" % \
                                  (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
         else:
-            method.add_insn(InsnNode("const-string v%d,\"{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
+            method.add_insn(InsnNode("const-string v%d,\"APIMONITOR:{\\\"input\\\":{\\\"class\\\":\\\"%s\\\", \\\"method\\\":\\\"%s\\\", \\\"para\\\": [\"" % \
                                  (ri + 1, m.split(';', 1)[0], m.split('(', 1)[0].split('->', 1)[1])))
         #method.add_insn(InsnNode("const-string v%d,\"%s(\"" % \
         #                         (ri + 1, m.split('(', 1)[0])))
